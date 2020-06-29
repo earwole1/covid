@@ -196,7 +196,7 @@ class Covid:
         ax.plot(data.date, data.positive.astype(np.float) / data.totalTestResults * 100, 'rx-', label='Percent Positive')
         ax.set_ylabel('Percent Positive', color='r')
         ax.legend(loc='upper left')
-        ax.set_ylim((0, 15))
+        ax.set_ylim((0, 20))
         ax.grid()
         ax2 = ax.twinx()
         ax2.plot(data.date, data.totalTestResults, label='Total Tests')

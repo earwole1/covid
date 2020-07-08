@@ -14,6 +14,8 @@ import os
 import shutil
 from datetime import datetime
 from enum import Enum
+from numpy.linalg import LinAlgError
+import population
 
 
 # NYT Data
@@ -56,6 +58,11 @@ class Covid:
         if not ensure_directory(IMAGE_DIR):
             print(f"WARN: Failed to create directory {IMAGE_DIR}")
         
+        try:
+            self.population: dict = population.get_population_by_state()
+        except FileNotFoundError:
+            print(f"WARN: If you want population data you must download from {population.POP_URL}")
+            
         data: pd.DataFrame = self.get_nyt_data()
         daily: pd.DataFrame = self.get_covid_data()
         del daily["state"]
@@ -104,6 +111,8 @@ class Covid:
         Returns the  x,y values for each day in `days' and slopes"""
         out = []
         if not column_name is None:
+            sel = data[column_name].isna()
+            data = data[~sel]
             metric = data[column_name]
         else:
             metric = data
@@ -111,12 +120,16 @@ class Covid:
         metric_dev_a = Covid.running_average(metric_dev, 7)
         
         for day in days:            
-            x_int = range(day)            
+            x_int = list(range(day))[:len(metric_dev_a)]
             try:
                 poly = np.polyfit(x_int, metric_dev_a[-day:], 1)
             except TypeError as TE:
                 print(f"x_int {len(x_int)} metric_dev_a {len(metric_dev_a[-day:])}")
-                raise TE
+                if include_poly:
+                    out.append(([], [], 0, []))
+                else:
+                    out.append(([], [], 0))
+                continue
             y = np.polyval(poly, x_int)
             m = (y[-1] - y[0]) / day
         
@@ -142,7 +155,11 @@ class Covid:
         for state in self.states:
             out = [state]
             data = self.get_state(state)
-            vals = Covid.process_state(data, column_name, days)
+            try:
+                vals = Covid.process_state(data, column_name, days)
+            except LinAlgError as LE:
+                print(f"ERROR: Failed LstSqr converge for {state}")
+                continue
             slopes = [v[-1] for v in vals]
             
             out.append(slopes[0])
@@ -196,7 +213,7 @@ class Covid:
         ax.plot(data.date, data.positive.astype(np.float) / data.totalTestResults * 100, 'rx-', label='Percent Positive')
         ax.set_ylabel('Percent Positive', color='r')
         ax.legend(loc='upper left')
-        ax.set_ylim((0, 20))
+        ax.set_ylim((0, 15))
         ax.grid()
         ax2 = ax.twinx()
         ax2.plot(data.date, data.totalTestResults, label='Total Tests')
@@ -398,6 +415,37 @@ class Covid:
         return fig, limits, dates, db
 
     
+    def animate_all_by_date(self, days:list):
+
+        days = sorted(days, reverse=True)
+
+        # get all current data
+        fig, limits, dates, db = self.plot_all_by_date()
+        limits = [(x, (y[0], int(np.ceil(y[1]/2000))*2000)) for (x,y) in limits]
+        max_cases = db["cases"][-1]
+        max_deaths = db["deaths"][-1]
+        max_tuple = (dates[-1], max_cases, max_deaths)
+        print(max_tuple)
+
+        for idx, lim in enumerate(limits):
+            fig.axes[idx].set_xlim(lim[0])
+            fig.axes[idx].set_ylim(lim[1])
+
+
+        for idx, day in enumerate(days):
+            print (f"Working index {idx} with day {day}")
+            _fig, _limits, _dates, _db = self.plot_all_by_date(fig, limits, go_back_days=day, max_tuple=max_tuple)
+            outname = f"cases_deaths_{idx:03d}_{day:03d}_days_back.png"
+            _fig.savefig(create_img_dir_path(outname))
+            #plt.close(_fig)
+        day = 0
+        idx += 1
+        _fig, _limits, _dates, _db = self.plot_all_by_date(fig, limits, max_tuple=max_tuple)
+        outname = f"cases_deaths_{idx:03d}_{day:03d}_days_back.png"
+        _fig.savefig(create_img_dir_path(outname))
+        plt.close(_fig)
+        
+
     @staticmethod
     def predict(x, num_days, poly):
         new_x = [x[-1] + np.timedelta64(i, "D") for i in range(1, num_days)]
@@ -409,9 +457,18 @@ def create_img_dir_path(image_name: str)-> str:
         
 if __name__ == '__main__':
     import sys
+    animate = False
+    if len(sys.argv) >= 2:
+        animate=True
+        print("Animating...")
     plt.close('all')
+    plt.ioff()
     c = Covid()
 
+    if animate:
+        days = range(4, 90, 4)
+        c.animate_all_by_date(days)
+    
     slopes_cases, states_cases = c.plot_all_trends("cases", 16)
     slopes_deaths, states_deaths =c.plot_all_trends("deaths", 16)
 
@@ -421,3 +478,25 @@ if __name__ == '__main__':
     fig, limits, dates, db = c.plot_all_by_date()
     plt.show()
     
+    if False:
+        print("Cases")
+        worst_cases = c.find_worst_states("cases", 10, Covid.DEFAULT_DAYS)
+        print([w[0] for w in worst_cases])
+        c.plot_worst(worst_cases, "cases")
+        plt.show()
+        
+        
+        print ("\nDeaths")
+        worst_deaths = c.find_worst_states("deaths", 10, Covid.DEFAULT_DAYS)
+        print([w[0] for w in worst_deaths])    
+        c.plot_worst(worst_deaths, "deaths")
+        plt.show()
+            
+
+        slopes = c.get_slopes_of_state("Ohio", "cases", 2, Covid.DEFAULT_DAYS)
+        c.plot_state("Ohio", "cases")
+
+
+        plt.show()
+            
+                

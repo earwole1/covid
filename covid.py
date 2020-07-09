@@ -119,7 +119,7 @@ class Covid:
             try:
                 poly = np.polyfit(x_int, metric_dev_a[-day:], 1)
             except TypeError as TE:
-                print(f"x_int {len(x_int)} metric_dev_a {len(metric_dev_a[-day:])}")
+                #print(f"x_int {len(x_int)} metric_dev_a {len(metric_dev_a[-day:])}")
                 if include_poly:
                     out.append(([], [], 0, []))
                 else:
@@ -180,7 +180,7 @@ class Covid:
         
         fig, ax = plt.subplots(1,2)
         fig.set_tight_layout(True)
-        fig.set_figwidth(13.5)
+        fig.set_figwidth(15)
         fig.set_figheight(6)
         
         ax[0].set_title(f"{state} - {metric_name}")
@@ -214,6 +214,8 @@ class Covid:
         ax2.plot(data.date, data.totalTestResults, label='Total Tests')
         ax2.set_ylabel('Total Tests')
         ax2.legend(loc='lower left')
+
+        fig.autofmt_xdate()
         
         return fig
 

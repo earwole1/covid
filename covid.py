@@ -15,7 +15,6 @@ import shutil
 from datetime import datetime
 from enum import Enum
 from numpy.linalg import LinAlgError
-import population
 
 
 # NYT Data
@@ -58,10 +57,6 @@ class Covid:
         if not ensure_directory(IMAGE_DIR):
             print(f"WARN: Failed to create directory {IMAGE_DIR}")
         
-        try:
-            self.population: dict = population.get_population_by_state()
-        except FileNotFoundError:
-            print(f"WARN: If you want population data you must download from {population.POP_URL}")
             
         data: pd.DataFrame = self.get_nyt_data()
         daily: pd.DataFrame = self.get_covid_data()

@@ -165,6 +165,30 @@ class Covid:
             all_slopes = all_slopes[:num_return]
         return all_slopes
     
+    def find_worst_positive_to_testing(self, num_return: int, day_range: int):
+        """Returns states with postive rate higher than testing rate over last `day_range' days.
+        Returns: list of list: [state: str, test_increase: float, positive_increase: float, ratio of the two: float]"""
+        N = day_range
+        vals = []
+        for state in self.states:
+            s = self.get_state(state)
+            ttr = s.totalTestResults.values
+            pos = s.positive.values
+            test_inc = ttr[-1] / ttr[-N]
+            pos_inc = pos[-1] / pos[-N]
+            vals.append( (state, test_inc, pos_inc, pos_inc / test_inc) )
+        vals_sorted = sorted(vals, reverse=True, key=lambda x: x[-1])
+        worst = list(filter( lambda x: x[-1] > 1, vals_sorted)) 
+        return worst[:num_return]
+
+    def print_worst_positive_to_testing(self, worst):
+        lens = [len(w[0]) for w in worst]
+        w = max(lens)
+        fmt = "%%-%ds" % (w)
+        print("%s PosInc TestInc Ratio" % (fmt % "State"))
+        for w in worst:
+            print("%-s %5d%% %5d%% %4.1fx" % (fmt % w[0], w[2]*100, w[1]*100, w[3]))
+
     def plot_worst(self, worst, metric_name:str):
         for w in worst:
             state = w[0]

@@ -5,6 +5,8 @@ Created on Fri Jun 12 09:40:05 2020
 @author: lance
 """
 
+# test commit hooks
+
 import pandas as pd
 
 # From: https://worldpopulationreview.com/states/

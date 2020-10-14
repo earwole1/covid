@@ -164,6 +164,20 @@ class Covid:
             all_slopes.sort(key=lambda x:x[1], reverse=True)
             all_slopes = all_slopes[:num_return]
         return all_slopes
+
+    def get_worst_positive(self, num_plot: int):
+        temp = []
+        for state in self.states:
+            data = self.get_state(state)
+            tests = data.totalTestResults
+            positive = data.positive
+            pp = positive / tests
+            sel = pp.isna()
+            pp[sel] = 0.0
+            temp.append((state, data.date, pp, pp.iloc[-1]))
+        temp = sorted(temp, key=lambda x:x[3], reverse=True)
+        temp = [[x[0], x[1], x[2]] for x in temp]
+        return temp[:num_plot]
     
     def find_worst_positive_to_testing(self, num_return: int, day_range: int):
         """Returns states with postive rate higher than testing rate over last `day_range' days.
